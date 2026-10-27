@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 import mlflow
 import mlflow.sklearn
+from mlflow.tracking import MlflowClient
 
 # 1. Tracking URI aur Experiment set karein (port 6001 aur sqlite backend ke mutabiq)
 mlflow.set_tracking_uri("http://localhost:6001")
@@ -59,7 +60,36 @@ with mlflow.start_run() as run:
     mlflow.sklearn.log_model(
         model,
         "iris-random-forest-model",
+        registered_model_name="iris-classifier",
         skops_trusted_types=["sklearn.tree._tree.Tree"],
+    )
+
+    # Assign the champion alias to the newly registered model.
+    client = MlflowClient()
+    current_run_id = mlflow.active_run().info.run_id
+
+    # Retrieve all versions registered under this model name.
+    registered_versions = client.search_model_versions(
+        "name='iris-classifier'"
+    )
+    current_model_version = next(
+        (
+            version
+            for version in registered_versions
+            if version.run_id == current_run_id
+        ),
+        None
+    )
+
+    if current_model_version is None:
+        raise RuntimeError(
+            "Model was logged but its registered version could not be found."
+        )
+
+    client.set_registered_model_alias(
+        name="iris-classifier",
+        alias="champion",
+        version=current_model_version.version
     )
 
     print(f"MLflow Run ID: {run.info.run_id}")
