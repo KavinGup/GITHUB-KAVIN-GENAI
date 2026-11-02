@@ -18,7 +18,7 @@ X = iris.data
 y = iris.target
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.25, random_state=0
+    X, y, test_size=0.20, random_state=0
 )
 
 n_estimators = 1
@@ -50,6 +50,10 @@ with mlflow.start_run() as run:
     accuracy = accuracy_score(y_test, y_pred)
     precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
     recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+
+    MIN_TEST_ACCURACY = 0.90  # Minimum accuracy threshold for logging the model
+    if accuracy < MIN_TEST_ACCURACY:
+        raise ValueError(f"Model rejected: test accuracy: {accuracy:.2f} is below {MIN_TEST_ACCURACY:.2f}. Model will not be logged.")
 
     # Metrics log karein
     mlflow.log_metric("accuracy", accuracy)
