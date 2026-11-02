@@ -2,35 +2,64 @@ from pathlib import Path
 import joblib
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+import mlflow
+import mlflow.sklearn
+import os
 
 app = FastAPI(title="Iris Model API")
 
-model_path = Path("models/iris_model.joblib")
-model = joblib.load(model_path)
+MLFLOW_TRACKING_URI = os.getenv(
+    "MLFLOW_TRACKING_URL", "http://127.0.0.1:6001"
+)
+
+MODEL_URI = "models:/iris-classifier@champion"
+
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+try:
+    model = mlflow.sklearn.load_model(MODEL_URI)
+    client = mlflow.MlflowClient()
+    champion_version = client.get_model_version_by_alias(
+        name="iris-classifier",
+        alias="champion"
+    )
+    model_version = champion_version.version
+    print(f"Loaded model: iris-classifier:{model_version}")
+except Exception as ex:
+    raise ValueError(f"Failed to load model from MLflow: {ex}")
 
 class IrisRequest(BaseModel):
-    sepal_length: float = Field(gt=0, example=5.1)
-    sepal_width: float = Field(gt=0, example=3.5)
-    petal_length: float = Field(gt=0, example=1.4)
-    petal_width: float = Field(gt=0, example=0.2)
-    
-@app.get("/")
-def health_check():
-    return {"message": "API is ready to serve..."}
+    sepal_length: float = Field(gt=0)
+    sepal_width: float = Field(gt=0)
+    petal_length: float = Field(gt=0)
+    petal_width: float = Field(gt=0)
 
-@app.post("/health")
+@app.get("/")
+def main():
+    return {
+        'message': 'server started.'
+    }
+
+@app.get("/health")
 def health_check():
-    return{"status": "healthy"}
+    return {
+        "status": "healthy",
+        "model_name": "iris-classifier",
+        "model_version": model_version
+    }
 
 @app.post("/predict")
-def predict(request: IrisRequest):
+def predict(data: IrisRequest):
     features = [[
-        request.sepal_length,
-        request.sepal_width,
-        request.petal_length,
-        request.petal_width
+        data.sepal_length,
+        data.sepal_width,
+        data.petal_length,
+        data.petal_width
     ]]
+
     prediction = int(model.predict(features)[0])
-    return {"prediction": prediction,
-            "class_name": ["setosa", "versicolor", "virginica"][prediction]
-            }
+
+    return {
+        'prediction': prediction,
+        'class_name': ['setosa', 'versicolor', 'virginica'][prediction]
+    }
