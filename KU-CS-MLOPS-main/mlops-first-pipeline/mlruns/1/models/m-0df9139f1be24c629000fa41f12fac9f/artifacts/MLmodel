@@ -1,0 +1,24 @@
+artifact_path: /workspaces/GITHUB-KAVIN-GENAI/KU-CS-MLOPS-main/mlops-first-pipeline/mlruns/1/models/m-0df9139f1be24c629000fa41f12fac9f/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.14.2
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.1
+    skops_trusted_types:
+    - sklearn.tree._tree.Tree
+mlflow_version: 3.17.2
+model_id: m-0df9139f1be24c629000fa41f12fac9f
+model_size_bytes: 46104
+model_uuid: m-0df9139f1be24c629000fa41f12fac9f
+prompts: null
+run_id: 07bced2f48d343648847f55722810a38
+utc_time_created: '2026-11-12 09:07:23.641333'

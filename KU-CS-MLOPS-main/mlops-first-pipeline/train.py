@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 import joblib
 from sklearn.datasets import load_iris
 from sklearn.ensemble import RandomForestClassifier
@@ -8,9 +10,24 @@ import mlflow
 import mlflow.sklearn
 from mlflow.tracking import MlflowClient
 
-# 1. Tracking URI aur Experiment set karein (port 6001 aur sqlite backend ke mutabiq)
-mlflow.set_tracking_uri("http://localhost:6001")
-mlflow.set_experiment("Iris-MLOps-Experiment")
+# Environment variables load karein (.env se)
+load_dotenv()
+
+# S3 bucket URI
+s3_bucket_uri = os.getenv("MLFLOW_S3_BUCKET_URI", "s3://squarebrackets-mlops-artifacts-kavin")
+
+# 1. Experiment create/get karein with S3 artifact location
+client = MlflowClient()
+experiment_name = "Iris-MLOps-S3-Experiment"
+
+experiment = client.get_experiment_by_name(experiment_name)
+if experiment is None:
+    client.create_experiment(
+        name=experiment_name,
+        artifact_location=s3_bucket_uri
+    )
+
+mlflow.set_experiment(experiment_name=experiment_name)
 
 # 2. Dataset load karein
 iris = load_iris()
@@ -43,7 +60,7 @@ with mlflow.start_run() as run:
         max_depth=max_depth,
         random_state=random_state
     )
-    model.fit(X_train, y_train)  # Fix: X_trainy_train -> X_train, y_train
+    model.fit(X_train, y_train)
 
     # Predictions aur metrics calculate karein
     y_pred = model.predict(X_test)
@@ -60,7 +77,7 @@ with mlflow.start_run() as run:
     mlflow.log_metric("precision", precision)
     mlflow.log_metric("recall", recall)
 
-    # MLflow ke andar model log/artifact save karein
+    # MLflow ke andar model log/artifact save karein (S3 bucket par)
     mlflow.sklearn.log_model(
         model,
         "iris-random-forest-model",
@@ -69,7 +86,6 @@ with mlflow.start_run() as run:
     )
 
     # Assign the champion alias to the newly registered model.
-    client = MlflowClient()
     current_run_id = mlflow.active_run().info.run_id
 
     # Retrieve all versions registered under this model name.
@@ -99,7 +115,7 @@ with mlflow.start_run() as run:
     print(f"MLflow Run ID: {run.info.run_id}")
     print(f"Accuracy logged to MLflow: {accuracy}")
 
-# 4. Local Joblib file save (jaise aapke purane pipeline mein thi)
+# 4. Local Joblib file save
 model_dir = Path("models")
 model_dir.mkdir(parents=True, exist_ok=True)
 joblib.dump(model, model_dir / "iris_model.joblib")
